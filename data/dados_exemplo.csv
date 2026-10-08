@@ -1,0 +1,79 @@
+# Dashboard NOS - Tarefas e Pendências
+
+Este projeto cria um dashboard interativo em Python com Streamlit para analisar:
+- pendentes por tarefa
+- performance por user
+- performance por tarefa
+- filtros por data, user e descrição
+
+Regra de negócio aplicada:
+- Vem como pendente quando o campo `User` está vazio e `Data tratamento` também está vazia.
+
+## Paleta de cores NOS
+- Azul NOS: #003B7A
+- Azul claro: #00A7E1
+- Laranja: #FF6A1A
+- Cinza escuro: #2F2F2F
+- Cinza claro: #E9EDF2
+
+## Estrutura
+- `app.py` — dashboard principal
+- `data/dados_exemplo.csv` — dados de exemplo
+- `requirements.txt` — dependências
+
+## Como executar
+
+1. Crie o ambiente virtual:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate   # Linux/macOS
+   .venv\Scripts\activate      # Windows
+   ```
+
+2. Instale as dependências:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Inicie o dashboard:
+   ```bash
+   streamlit run app.py
+   ```
+
+4. No navegador, carregue o ficheiro CSV/XLSX se quiser analisar novos dados.
+
+## Como atualizar os dados
+
+### Opção 1 — substituir o ficheiro na pasta `data`
+- Guarda o novo ficheiro como `dados_exemplo.csv`
+- Reinicia o dashboard
+
+### Opção 2 — carregar no próprio dashboard
+- No sidebar, carrega o teu ficheiro novo em CSV ou Excel
+- O dashboard recalcula automaticamente
+
+### Opção 3 — adicionar manualmente via tabela no dashboard
+- Se quiseres, acrescenta uma linha com os campos:
+  - Data entrada
+  - Descrição
+  - User
+  - Data tratamento
+
+## Colunas esperadas
+O dashboard assume estas colunas:
+- Data entrada
+- Descrição
+- User
+- Data tratamento
+
+Se o teu ficheiro usa nomes diferentes, o dashboard tenta normalizar automaticamente.
+
+## Observações
+Se a tua folha tiver várias abas no Excel, o dashboard lê todas e consolida as linhas.
+
+## Próximo passo recomendado
+Se quiseres, posso continuar e adaptar este dashboard com:
+- botão de exportação em CSV
+- formulário de inserção manual
+- persistência em SQLite
+- visualização por mês, user e tarefa em maior detalhe
