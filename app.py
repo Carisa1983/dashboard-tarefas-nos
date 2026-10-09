@@ -365,8 +365,29 @@ else:
     st.plotly_chart(task_chart, use_container_width=True)
 
 st.subheader("Acompanhamento dos registos")
-pending_tab, in_progress_tab, all_tab = st.tabs(
+pending = filtered[filtered["Estado"].eq("Pendente")].sort_values(
+    "Dias em aberto", ascending=False, na_position="last"
+)
+pending_task_board = (
+    pending.groupby("Tarefa")
+    .agg(
+        Pendentes=("Tarefa", "size"),
+        **{
+            "Data mais antiga": ("Data entrada", "min"),
+            "Dias do mais antigo": ("Dias em aberto", "max"),
+        },
+    )
+    .reset_index()
+    .sort_values(["Pendentes", "Dias do mais antigo"], ascending=[False, False])
+)
+if not pending_task_board.empty:
+    pending_task_board["% dos pendentes"] = (
+        pending_task_board["Pendentes"].div(pending_count).mul(100).round(1)
+    )
+
+pending_board_tab, pending_tab, in_progress_tab, all_tab = st.tabs(
     [
+        f"Quadro de pendentes ({len(pending_task_board)} tarefas)",
         f"Pendentes ({pending_count})",
         f"Em tratamento ({in_progress_count})",
         f"Todos ({total})",
@@ -382,10 +403,37 @@ display_columns = [
     "Estado",
 ]
 
+with pending_board_tab:
+    st.caption("Resumo das tarefas com registos pendentes, ordenadas por volume.")
+    if pending_task_board.empty:
+        st.success("Não há tarefas pendentes com os filtros selecionados.")
+    else:
+        st.dataframe(
+            pending_task_board,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Pendentes": st.column_config.NumberColumn("Pendentes", format="%d"),
+                "% dos pendentes": st.column_config.NumberColumn(
+                    "% dos pendentes", format="%.1f%%"
+                ),
+                "Data mais antiga": st.column_config.DateColumn(
+                    "Data mais antiga", format="DD/MM/YYYY"
+                ),
+                "Dias do mais antigo": st.column_config.NumberColumn(
+                    "Dias do mais antigo", format="%d"
+                ),
+            },
+        )
+        st.download_button(
+            "Descarregar quadro de pendentes (CSV)",
+            export_csv(pending_task_board),
+            file_name="quadro_pendentes_por_tarefa.csv",
+            mime="text/csv",
+            key="download_pending_board",
+        )
+
 with pending_tab:
-    pending = filtered[filtered["Estado"].eq("Pendente")].sort_values(
-        "Dias em aberto", ascending=False, na_position="last"
-    )
     if pending.empty:
         st.success("Não há registos pendentes.")
     else:
