@@ -116,7 +116,13 @@ def clean_dataframe(df):
     df = df.dropna(how="all", subset=REQUIRED_COLUMNS)
     df["Descricao"] = df["Descricao"].fillna("Sem descrição").astype(str).str.strip()
     df["User"] = df["User"].fillna("").map(normalize_user)
-    df["Tarefa"] = df["Tarefa"].fillna("Tarefa desconhecida").astype(str).str.strip()
+    df["Tarefa"] = (
+        df["Tarefa"]
+        .fillna("Tarefa desconhecida")
+        .astype(str)
+        .str.strip()
+        .str.replace(r"(?i)^DL\s+", "", regex=True)
+    )
     df["Data entrada"] = pd.to_datetime(df["Data entrada"], errors="coerce", dayfirst=True)
     df["Data tratamento"] = pd.to_datetime(df["Data tratamento"], errors="coerce", dayfirst=True)
 
@@ -180,11 +186,15 @@ def export_csv(df):
     return df.to_csv(index=False, sep=";", date_format="%d-%m-%Y").encode("utf-8-sig")
 
 
-st.set_page_config(page_title="Stock & Pendentes | NOS", page_icon="📊", layout="wide")
+st.set_page_config(
+    page_title="Tarefas Recebimentos Contencioso",
+    page_icon="📊",
+    layout="wide",
+)
 style_dashboard()
 
 st.markdown('<div class="dashboard-eyebrow">NOS · Operações</div>', unsafe_allow_html=True)
-st.title("Dashboard de stock e pendentes")
+st.title("Tarefas Recebimentos Contencioso")
 st.markdown(
     '<p class="dashboard-subtitle">Acompanha o volume de trabalho, o estado dos pedidos e os tempos de tratamento.</p>',
     unsafe_allow_html=True,
