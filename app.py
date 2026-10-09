@@ -279,20 +279,31 @@ with left_chart:
     st.subheader("Entradas e conclusões por mês")
     entries = (
         filtered.dropna(subset=["Data entrada"])
-        .assign(Mês=lambda frame: frame["Data entrada"].dt.to_period("M").astype(str))
+        .assign(
+            Mês=lambda frame: frame["Data entrada"]
+            .dt.to_period("M")
+            .astype(str)
+            .where(frame["Data entrada"].dt.year.ge(2026), "Antes de 2026")
+        )
         .groupby("Mês")
         .size()
         .rename("Entradas")
     )
     completed = (
         filtered.dropna(subset=["Data tratamento"])
-        .assign(Mês=lambda frame: frame["Data tratamento"].dt.to_period("M").astype(str))
+        .assign(
+            Mês=lambda frame: frame["Data tratamento"]
+            .dt.to_period("M")
+            .astype(str)
+            .where(frame["Data tratamento"].dt.year.ge(2026), "Antes de 2026")
+        )
         .groupby("Mês")
         .size()
         .rename("Concluídos")
     )
     monthly = pd.concat([entries, completed], axis=1).fillna(0)
     monthly.index.name = "Mês"
+    month_order = ["Antes de 2026", *sorted(month for month in monthly.index if month != "Antes de 2026")]
     monthly = monthly.reset_index().melt(
         id_vars="Mês", var_name="Indicador", value_name="Registos"
     )
@@ -303,6 +314,7 @@ with left_chart:
         color="Indicador",
         barmode="group",
         color_discrete_map={"Entradas": THEME["blue"], "Concluídos": THEME["pink"]},
+        category_orders={"Mês": month_order},
         labels={"Mês": "Mês", "Registos": "Número de registos"},
     )
     monthly_chart.update_layout(

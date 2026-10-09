@@ -7,6 +7,7 @@ Dashboard interativo em Streamlit para acompanhar entradas, conclusões e trabal
 - Indicadores de stock total, concluídos, em tratamento, pendentes e taxa de conclusão.
 - Tempo médio entre a entrada e a conclusão.
 - Gráficos mensais, distribuição por estado e volume em aberto por tarefa.
+- Entradas e conclusões anteriores a 2026 agrupadas num único período no gráfico mensal.
 - Quadro de pendentes agrupado por tarefa, com antiguidade e exportação CSV.
 - Filtros por tarefa, responsável, período de entrada e descrição.
 - Separadores próprios para pendentes, registos em tratamento e todos os registos.
