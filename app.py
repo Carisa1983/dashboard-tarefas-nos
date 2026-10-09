@@ -40,15 +40,15 @@ def normalize_columns(df):
         "data de entrada": "Data entrada",
         "descricao": "Descricao",
         "description": "Descricao",
-        "tarefa": "Descricao",
+        "tarefa": "Tarefa",
         "user": "User",
         "utilizador": "User",
         "responsavel": "User",
         "data tratamento": "Data tratamento",
         "data de tratamento": "Data tratamento",
         "data conclusao": "Data tratamento",
-        "area": "Area",
-        "folha": "Area",
+        "area": "Tarefa",
+        "folha": "Tarefa",
     }
     rename_map = {}
     for column in df.columns:
@@ -70,7 +70,7 @@ def normalize_user(value):
 @st.cache_data
 def load_default_data():
     if not DATA_PATH.exists():
-        return pd.DataFrame(columns=[*REQUIRED_COLUMNS, "Area"])
+        return pd.DataFrame(columns=[*REQUIRED_COLUMNS, "Tarefa"])
     return pd.read_csv(DATA_PATH, sep=";", encoding="utf-8-sig")
 
 
@@ -94,8 +94,8 @@ def load_uploaded_data(filename, file_bytes):
         if not set(REQUIRED_COLUMNS).issubset(sheet.columns):
             skipped_sheets.append(sheet_name)
             continue
-        if "Area" not in sheet.columns:
-            sheet["Area"] = sheet_name
+        if "Tarefa" not in sheet.columns:
+            sheet["Tarefa"] = sheet_name
         frames.append(sheet)
 
     if not frames:
@@ -111,12 +111,12 @@ def clean_dataframe(df):
     if missing:
         raise ValueError(f"Colunas em falta: {', '.join(missing)}.")
 
-    if "Area" not in df.columns:
-        df["Area"] = "Geral"
+    if "Tarefa" not in df.columns:
+        df["Tarefa"] = "Tarefa desconhecida"
     df = df.dropna(how="all", subset=REQUIRED_COLUMNS)
     df["Descricao"] = df["Descricao"].fillna("Sem descrição").astype(str).str.strip()
     df["User"] = df["User"].fillna("").map(normalize_user)
-    df["Area"] = df["Area"].fillna("Geral").astype(str).str.strip()
+    df["Tarefa"] = df["Tarefa"].fillna("Tarefa desconhecida").astype(str).str.strip()
     df["Data entrada"] = pd.to_datetime(df["Data entrada"], errors="coerce", dayfirst=True)
     df["Data tratamento"] = pd.to_datetime(df["Data tratamento"], errors="coerce", dayfirst=True)
 
@@ -132,8 +132,8 @@ def clean_dataframe(df):
     return df
 
 
-def apply_filters(df, areas, users, date_start, date_end, description_query):
-    filtered = df[df["Area"].isin(areas)].copy()
+def apply_filters(df, tasks, users, date_start, date_end, description_query):
+    filtered = df[df["Tarefa"].isin(tasks)].copy()
     selected_assignees = [user for user in users if user != "(Sem responsável)"]
     user_mask = filtered["User"].isin(selected_assignees)
     if "(Sem responsável)" in users:
@@ -222,8 +222,8 @@ if skipped_sheets:
 
 valid_dates = data["Data entrada"].dropna()
 with st.sidebar:
-    all_areas = sorted(data["Area"].dropna().unique().tolist())
-    selected_areas = st.multiselect("Área", all_areas, default=all_areas)
+    all_tasks = sorted(data["Tarefa"].dropna().unique().tolist())
+    selected_tasks = st.multiselect("Tarefa", all_tasks, default=all_tasks)
     all_users = sorted(user for user in data["User"].unique().tolist() if user)
     user_options = ["(Sem responsável)", *all_users]
     selected_users = st.multiselect("Responsável", user_options, default=user_options)
@@ -247,7 +247,7 @@ with st.sidebar:
     description_query = st.text_input("Pesquisar descrição")
 
 filtered = apply_filters(
-    data, selected_areas, selected_users, date_start, date_end, description_query
+    data, selected_tasks, selected_users, date_start, date_end, description_query
 )
 if filtered.empty:
     st.info("Não existem registos para os filtros selecionados.")
@@ -334,35 +334,35 @@ with right_chart:
     )
     st.plotly_chart(status_chart, use_container_width=True)
 
-st.subheader("Trabalho por área")
+st.subheader("Trabalho por tarefa")
 open_work = filtered[filtered["Estado"].ne("Concluído")]
 if open_work.empty:
     st.success("Não há trabalho por concluir com os filtros selecionados.")
 else:
-    area_summary = (
-        open_work.groupby(["Area", "Estado"])
+    task_summary = (
+        open_work.groupby(["Tarefa", "Estado"])
         .size()
         .rename("Registos")
         .reset_index()
         .sort_values("Registos", ascending=True)
     )
-    area_chart = px.bar(
-        area_summary,
+    task_chart = px.bar(
+        task_summary,
         x="Registos",
-        y="Area",
+        y="Tarefa",
         color="Estado",
         orientation="h",
         barmode="stack",
         color_discrete_map=STATUS_COLORS,
-        labels={"Area": "Área", "Registos": "Registos em aberto"},
+        labels={"Tarefa": "Tarefa", "Registos": "Registos em aberto"},
     )
-    area_chart.update_layout(
+    task_chart.update_layout(
         plot_bgcolor="white",
         paper_bgcolor="white",
         legend_title_text="",
         margin=dict(l=10, r=10, t=20, b=10),
     )
-    st.plotly_chart(area_chart, use_container_width=True)
+    st.plotly_chart(task_chart, use_container_width=True)
 
 st.subheader("Acompanhamento dos registos")
 pending_tab, in_progress_tab, all_tab = st.tabs(
@@ -373,7 +373,7 @@ pending_tab, in_progress_tab, all_tab = st.tabs(
     ]
 )
 display_columns = [
-    "Area",
+    "Tarefa",
     "Descricao",
     "Data entrada",
     "User",

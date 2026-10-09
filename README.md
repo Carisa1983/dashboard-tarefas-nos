@@ -1,13 +1,13 @@
 # Dashboard NOS — Stock e Pendentes
 
-Dashboard interativo em Streamlit para acompanhar entradas, conclusões e trabalho em aberto por área e responsável.
+Dashboard interativo em Streamlit para acompanhar entradas, conclusões e trabalho em aberto por tarefa e responsável.
 
 ## Funcionalidades
 
 - Indicadores de stock total, concluídos, em tratamento, pendentes e taxa de conclusão.
 - Tempo médio entre a entrada e a conclusão.
-- Gráficos mensais, distribuição por estado e volume em aberto por área.
-- Filtros por área, responsável, período de entrada e descrição.
+- Gráficos mensais, distribuição por estado e volume em aberto por tarefa.
+- Filtros por tarefa, responsável, período de entrada e descrição.
 - Separadores próprios para pendentes, registos em tratamento e todos os registos.
 - Exportação dos resultados filtrados para CSV.
 - Carregamento de CSV ou Excel com várias folhas.
@@ -30,6 +30,6 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Carrega o ficheiro de stock na barra lateral. Em Excel, as folhas com as colunas `Data entrada`, `Descrição`, `User` e `Data tratamento` são consolidadas automaticamente; a folha de origem passa a ser a área. Em CSV, usa estas mesmas colunas e separa-as por vírgulas ou ponto e vírgula.
+Carrega o ficheiro de stock na barra lateral. Em Excel, as folhas com as colunas `Data entrada`, `Descrição`, `User` e `Data tratamento` são consolidadas automaticamente; a folha de origem passa a ser a tarefa. Em CSV, usa estas mesmas colunas e separa-as por vírgulas ou ponto e vírgula. Se o ficheiro incluir a coluna opcional `Tarefa`, é usada para identificar cada tipo de trabalho.
 
-O campo `Area` é opcional nos ficheiros carregados. A interface usa as cores oficiais do sistema de design NOS — rosa `#EB84CD`, azul `#4F60D2`, ciano `#4BDBC5`, verde `#6EA514`, vermelho `#E04232`, amarelo `#FCD200` e lima `#BAD80A` — em conjunto com fundos neutros e suaves. Os valores vêm dos tokens públicos em [nos.pt](https://www.nos.pt/) e no [sistema de design Alma da NOS](https://cdn.nos.pt/alma-design-system/tokens/nos/dist/0.1.0/tokens.min.css).
+A interface usa as cores oficiais do sistema de design NOS — rosa `#EB84CD`, azul `#4F60D2`, ciano `#4BDBC5`, verde `#6EA514`, vermelho `#E04232`, amarelo `#FCD200` e lima `#BAD80A` — em conjunto com fundos neutros e suaves. Os valores vêm dos tokens públicos em [nos.pt](https://www.nos.pt/) e no [sistema de design Alma da NOS](https://cdn.nos.pt/alma-design-system/tokens/nos/dist/0.1.0/tokens.min.css).
