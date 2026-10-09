@@ -10,7 +10,7 @@ Dashboard interativo em Streamlit para acompanhar entradas, conclusões e trabal
 - Entradas e conclusões anteriores a 2026 agrupadas num único período no gráfico mensal.
 - Prefixo “DL” removido dos nomes das tarefas e “Pagamentos ilhas” apresentado como “Pgto Ilhas - via ficheiro”.
 - Quadro de pendentes agrupado por tarefa, com antiguidade e exportação CSV.
-- Separador de análise por responsável, com distribuição por estado, taxa de conclusão e tempo médio.
+- Separador de análise por responsável atribuído, com distribuição por estado, taxa de conclusão e tempo médio; os pendentes sem responsável ficam excluídos.
 - Filtros por tarefa, responsável, período de entrada e descrição.
 - Separadores próprios para pendentes, registos em tratamento e todos os registos.
 - Exportação dos resultados filtrados para CSV.

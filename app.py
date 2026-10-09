@@ -502,94 +502,97 @@ with all_tab:
     )
 
 with responsible_tab:
-    st.caption("Análise dos registos por responsável, conforme os filtros selecionados.")
-    responsible_data = filtered.assign(
-    Responsável=filtered["User"].replace("", "(Sem responsável)")
+    st.caption(
+        "Análise dos registos atribuídos, conforme os filtros selecionados. "
+        "Os pendentes sem responsável são apresentados apenas no quadro de pendentes."
+    )
+    responsible_data = filtered[filtered["User"].ne("")].assign(
+        Responsável=lambda frame: frame["User"]
     )
     responsible_summary = (
-    responsible_data.pivot_table(
-        index="Responsável",
-        columns="Estado",
-        values="Descricao",
-        aggfunc="size",
-        fill_value=0,
-    )
-    .reindex(columns=["Pendente", "Em tratamento", "Concluído"], fill_value=0)
-    .rename(
-        columns={
-            "Pendente": "Pendentes",
-            "Em tratamento": "Em tratamento",
-            "Concluído": "Concluídos",
-        }
-    )
+        responsible_data.pivot_table(
+            index="Responsável",
+            columns="Estado",
+            values="Descricao",
+            aggfunc="size",
+            fill_value=0,
+        )
+        .reindex(columns=["Pendente", "Em tratamento", "Concluído"], fill_value=0)
+        .rename(
+            columns={
+                "Pendente": "Pendentes",
+                "Em tratamento": "Em tratamento",
+                "Concluído": "Concluídos",
+            }
+        )
     )
     responsible_summary["Total"] = responsible_summary.sum(axis=1)
     responsible_summary["Taxa de conclusão"] = (
-    responsible_summary["Concluídos"]
-    .div(responsible_summary["Total"])
-    .mul(100)
-    .round(1)
+        responsible_summary["Concluídos"]
+        .div(responsible_summary["Total"])
+        .mul(100)
+        .round(1)
     )
     responsible_summary["Tempo médio até à conclusão (dias)"] = (
-    responsible_data[responsible_data["Estado"].eq("Concluído")]
-    .groupby("Responsável")["Dias para concluir"]
-    .mean()
-    .round(1)
+        responsible_data[responsible_data["Estado"].eq("Concluído")]
+        .groupby("Responsável")["Dias para concluir"]
+        .mean()
+        .round(1)
     )
     responsible_summary = (
-    responsible_summary.reset_index()
-    .sort_values(["Total", "Responsável"], ascending=[False, True])
+        responsible_summary.reset_index()
+        .sort_values(["Total", "Responsável"], ascending=[False, True])
     )
     responsible_chart_data = responsible_summary.melt(
-    id_vars="Responsável",
-    value_vars=["Pendentes", "Em tratamento", "Concluídos"],
-    var_name="Estado",
-    value_name="Registos",
+        id_vars="Responsável",
+        value_vars=["Pendentes", "Em tratamento", "Concluídos"],
+        var_name="Estado",
+        value_name="Registos",
     )
     responsible_chart = px.bar(
-    responsible_chart_data,
-    x="Registos",
-    y="Responsável",
-    color="Estado",
-    orientation="h",
-    barmode="stack",
-    category_orders={
-        "Responsável": responsible_summary["Responsável"].tolist(),
-        "Estado": ["Pendentes", "Em tratamento", "Concluídos"],
-    },
-    color_discrete_map={
-        "Pendentes": STATUS_COLORS["Pendente"],
-        "Em tratamento": STATUS_COLORS["Em tratamento"],
-        "Concluídos": STATUS_COLORS["Concluído"],
-    },
-    labels={"Responsável": "Responsável", "Registos": "Registos"},
+        responsible_chart_data,
+        x="Registos",
+        y="Responsável",
+        color="Estado",
+        orientation="h",
+        barmode="stack",
+        category_orders={
+            "Responsável": responsible_summary["Responsável"].tolist(),
+            "Estado": ["Pendentes", "Em tratamento", "Concluídos"],
+        },
+        color_discrete_map={
+            "Pendentes": STATUS_COLORS["Pendente"],
+            "Em tratamento": STATUS_COLORS["Em tratamento"],
+            "Concluídos": STATUS_COLORS["Concluído"],
+        },
+        labels={"Responsável": "Responsável", "Registos": "Registos"},
     )
     responsible_chart.update_layout(
-    plot_bgcolor="white",
-    paper_bgcolor="white",
-    legend_title_text="",
-    margin=dict(l=10, r=10, t=20, b=10),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        legend_title_text="",
+        margin=dict(l=10, r=10, t=20, b=10),
     )
     st.plotly_chart(responsible_chart, use_container_width=True)
     st.dataframe(
-    responsible_summary,
-    hide_index=True,
-    use_container_width=True,
-    column_config={
-        "Taxa de conclusão": st.column_config.NumberColumn(
-            "Taxa de conclusão", format="%.1f%%"
-        ),
-        "Tempo médio até à conclusão (dias)": st.column_config.NumberColumn(
-            "Tempo médio até à conclusão (dias)", format="%.1f"
-        ),
-    },
+        responsible_summary,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Taxa de conclusão": st.column_config.NumberColumn(
+                "Taxa de conclusão", format="%.1f%%"
+            ),
+            "Tempo médio até à conclusão (dias)": st.column_config.NumberColumn(
+                "Tempo médio até à conclusão (dias)", format="%.1f"
+            ),
+        },
     )
     st.download_button(
-    "Descarregar análise por responsável (CSV)",
-    export_csv(responsible_summary),
-    file_name="analise_por_responsavel.csv",
-    mime="text/csv",
-    key="download_responsible_summary",
+        "Descarregar análise por responsável (CSV)",
+        export_csv(responsible_summary),
+        file_name="analise_por_responsavel.csv",
+        mime="text/csv",
+        key="download_responsible_summary",
     )
 
 st.caption("Paleta baseada nas cores oficiais da NOS.pt, com fundos neutros e suaves.")
