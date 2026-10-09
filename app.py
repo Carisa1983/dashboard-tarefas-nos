@@ -122,6 +122,11 @@ def clean_dataframe(df):
         .astype(str)
         .str.strip()
         .str.replace(r"(?i)^DL\s+", "", regex=True)
+        .replace(
+            to_replace=r"(?i)^Pagamentos ilhas$",
+            value="Pgto Ilhas - via ficheiro",
+            regex=True,
+        )
     )
     df["Data entrada"] = pd.to_datetime(df["Data entrada"], errors="coerce", dayfirst=True)
     df["Data tratamento"] = pd.to_datetime(df["Data tratamento"], errors="coerce", dayfirst=True)
