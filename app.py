@@ -221,7 +221,7 @@ try:
     else:
         raw_data = load_default_data()
         skipped_sheets = []
-        source_label = "Quantidade_08.10.xlsx"
+        source_label = "Stock_Tarefas.xlsx"
     data = clean_dataframe(raw_data)
 except Exception as error:
     st.error(f"Não foi possível carregar os dados: {error}")
