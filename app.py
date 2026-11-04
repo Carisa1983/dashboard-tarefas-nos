@@ -393,7 +393,7 @@ else:
     st.plotly_chart(task_chart, use_container_width=True)
 
 tracking_tab, user_task_tab = st.tabs(
-    ["Acompanhamento dos registos", "📊 Produção por user e tarefa"]
+    ["Acompanhamento dos registos", "📊 Registo por user e tarefa"]
 )
 with tracking_tab:
     st.subheader("Acompanhamento dos registos")
