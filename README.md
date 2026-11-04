@@ -23,7 +23,7 @@ O ficheiro operacional `Quantidade_08.10.xlsx` é local e não é incluído no r
 
 ## Estados
 
-- **Pendente:** sem responsável e sem data de tratamento.
+- **Pendente:** sem responsável, mesmo que tenha data de tratamento.
 - **Em tratamento:** tem responsável, mas ainda não tem data de tratamento.
 - **Concluído:** tem data de tratamento.
 

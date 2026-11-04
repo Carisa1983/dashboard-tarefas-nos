@@ -131,13 +131,14 @@ def clean_dataframe(df):
     df["Data entrada"] = pd.to_datetime(df["Data entrada"], errors="coerce", dayfirst=True)
     df["Data tratamento"] = pd.to_datetime(df["Data tratamento"], errors="coerce", dayfirst=True)
 
-    df["Estado"] = "Concluído"
-    df.loc[df["Data tratamento"].isna() & df["User"].eq(""), "Estado"] = "Pendente"
-    df.loc[df["Data tratamento"].isna() & df["User"].ne(""), "Estado"] = "Em tratamento"
+    df["Estado"] = "Pendente"
+    assigned = df["User"].ne("")
+    df.loc[assigned & df["Data tratamento"].isna(), "Estado"] = "Em tratamento"
+    df.loc[assigned & df["Data tratamento"].notna(), "Estado"] = "Concluído"
 
     today = pd.Timestamp.today().normalize()
     waiting_days = (today - df["Data entrada"]).dt.days
-    df["Dias em aberto"] = waiting_days.where(df["Data tratamento"].isna()).clip(lower=0)
+    df["Dias em aberto"] = waiting_days.where(df["Estado"].ne("Concluído")).clip(lower=0)
     duration = (df["Data tratamento"] - df["Data entrada"]).dt.days
     df["Dias para concluir"] = duration.where(duration.ge(0))
     return df
@@ -286,7 +287,7 @@ kpis[4].metric("Taxa de conclusão", f"{completion_rate:.1f}%")
 average_text = f"{average_days:.1f} dias" if pd.notna(average_days) else "—"
 st.caption(
     f"Tempo médio até à conclusão: **{average_text}**. "
-    "Pendente = sem responsável e sem data de tratamento; em tratamento = com responsável, ainda sem conclusão."
+    "Pendente = sem responsável; em tratamento = com responsável, ainda sem conclusão."
 )
 
 left_chart, right_chart = st.columns((1.4, 1))
@@ -305,7 +306,7 @@ with left_chart:
         .rename("Entradas")
     )
     completed = (
-        filtered.dropna(subset=["Data tratamento"])
+        filtered[filtered["Estado"].eq("Concluído")].dropna(subset=["Data tratamento"])
         .assign(
             Mês=lambda frame: frame["Data tratamento"]
             .dt.to_period("M")
