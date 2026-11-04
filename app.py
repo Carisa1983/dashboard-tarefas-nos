@@ -412,13 +412,21 @@ if not pending_task_board.empty:
         pending_task_board["Pendentes"].div(pending_count).mul(100).round(1)
     )
 
-pending_board_tab, pending_tab, in_progress_tab, all_tab, responsible_tab = st.tabs(
+(
+    pending_board_tab,
+    pending_tab,
+    in_progress_tab,
+    all_tab,
+    responsible_tab,
+    user_task_tab,
+) = st.tabs(
     [
         f"Quadro de pendentes ({len(pending_task_board)} tarefas)",
         f"Pendentes ({pending_count})",
         f"Em tratamento ({in_progress_count})",
         f"Todos ({total})",
         "Por responsável",
+        "Por user e tarefa",
     ]
 )
 display_columns = [
@@ -593,6 +601,83 @@ with responsible_tab:
         file_name="analise_por_responsavel.csv",
         mime="text/csv",
         key="download_responsible_summary",
+    )
+
+with user_task_tab:
+    st.caption(
+        "Registos concluídos por user e tarefa. Os registos sem user atribuído "
+        "são pendentes e não entram nesta análise."
+    )
+    assigned_data = filtered[filtered["User"].ne("")]
+    completed_by_user_task = (
+        assigned_data.pivot_table(
+            index="User",
+            columns="Tarefa",
+            values="Estado",
+            aggfunc=lambda states: states.eq("Concluído").sum(),
+            fill_value=0,
+        )
+        .reindex(columns=sorted(selected_tasks), fill_value=0)
+        .astype(int)
+    )
+    completed_by_user_task["Total concluídos"] = completed_by_user_task.sum(axis=1)
+    completed_by_user_task = completed_by_user_task.sort_values(
+        "Total concluídos", ascending=False
+    )
+    st.subheader("Concluídos por user e tarefa")
+    if completed_by_user_task.empty:
+        st.info("Não há registos com user atribuído nos filtros selecionados.")
+    else:
+        st.dataframe(
+            completed_by_user_task.reset_index(),
+            hide_index=True,
+            use_container_width=True,
+        )
+
+    user_task_detail = (
+        assigned_data.pivot_table(
+            index=["User", "Tarefa"],
+            columns="Estado",
+            values="Descricao",
+            aggfunc="size",
+            fill_value=0,
+        )
+        .reindex(columns=["Concluído", "Em tratamento", "Pendente"], fill_value=0)
+        .rename(
+            columns={
+                "Concluído": "Concluídos",
+                "Em tratamento": "Em tratamento",
+                "Pendente": "Pendentes",
+            }
+        )
+    )
+    user_task_detail["Total atribuídos"] = user_task_detail.sum(axis=1)
+    user_task_detail["Tempo médio de conclusão (dias)"] = (
+        assigned_data[assigned_data["Estado"].eq("Concluído")]
+        .groupby(["User", "Tarefa"])["Dias para concluir"]
+        .mean()
+        .round(1)
+    )
+    user_task_detail = user_task_detail.reset_index().sort_values(
+        ["User", "Tarefa"]
+    )
+    st.subheader("Detalhe por user e tarefa")
+    st.dataframe(
+        user_task_detail,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Tempo médio de conclusão (dias)": st.column_config.NumberColumn(
+                "Tempo médio de conclusão (dias)", format="%.1f"
+            ),
+        },
+    )
+    st.download_button(
+        "Descarregar detalhe por user e tarefa (CSV)",
+        export_csv(user_task_detail),
+        file_name="analise_por_user_e_tarefa.csv",
+        mime="text/csv",
+        key="download_user_task_detail",
     )
 
 st.caption("Paleta baseada nas cores oficiais da NOS.pt, com fundos neutros e suaves.")
