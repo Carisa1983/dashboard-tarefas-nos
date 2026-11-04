@@ -427,7 +427,7 @@ if not pending_task_board.empty:
         f"Em tratamento ({in_progress_count})",
         f"Todos ({total})",
         "Por responsável",
-        "Por user e tarefa",
+        "📊 Produção por user e tarefa",
     ]
 )
 display_columns = [
@@ -643,80 +643,128 @@ with responsible_tab:
     )
 
 with user_task_tab:
-    st.caption(
-        "Registos concluídos por user e tarefa. Os registos sem user atribuído "
-        "são pendentes e não entram nesta análise."
-    )
-    assigned_data = filtered[filtered["User"].ne("")]
-    completed_by_user_task = (
-        assigned_data.pivot_table(
-            index="User",
-            columns="Tarefa",
-            values="Estado",
-            aggfunc=lambda states: states.eq("Concluído").sum(),
-            fill_value=0,
+    with st.container(border=True):
+        st.header("Produção por user e tarefa")
+        st.caption(
+            "Veja o que cada user concluiu em cada tarefa. Os registos sem user "
+            "atribuído são pendentes e não entram nesta análise."
         )
-        .reindex(columns=sorted(selected_tasks), fill_value=0)
-        .astype(int)
-    )
-    completed_by_user_task["Total concluídos"] = completed_by_user_task.sum(axis=1)
-    completed_by_user_task = completed_by_user_task.sort_values(
-        "Total concluídos", ascending=False
-    )
-    st.subheader("Concluídos por user e tarefa")
-    if completed_by_user_task.empty:
-        st.info("Não há registos com user atribuído nos filtros selecionados.")
-    else:
+        assigned_data = filtered[filtered["User"].ne("")]
+        completed_by_user_task = (
+            assigned_data[assigned_data["Estado"].eq("Concluído")]
+            .groupby(["User", "Tarefa"])
+            .size()
+            .rename("Concluídos")
+            .reset_index()
+        )
+        total_completed = int(completed_by_user_task["Concluídos"].sum())
+        users_with_work = int(assigned_data["User"].nunique())
+        tasks_with_work = int(completed_by_user_task["Tarefa"].nunique())
+        metrics = st.columns(3)
+        metrics[0].metric(
+            "Registos concluídos", f"{total_completed:,}".replace(",", " ")
+        )
+        metrics[1].metric("Users com registos", users_with_work)
+        metrics[2].metric("Tarefas concluídas", tasks_with_work)
+
+        if completed_by_user_task.empty:
+            st.info("Não há registos concluídos por user nos filtros selecionados.")
+        else:
+            st.subheader("Gráfico de concluídos por tarefa e user")
+            user_task_chart = px.bar(
+                completed_by_user_task,
+                x="Concluídos",
+                y="Tarefa",
+                color="User",
+                orientation="h",
+                barmode="group",
+                category_orders={
+                    "Tarefa": sorted(completed_by_user_task["Tarefa"].unique()),
+                    "User": sorted(completed_by_user_task["User"].unique()),
+                },
+                labels={"Tarefa": "Tarefa", "Concluídos": "Registos concluídos"},
+                color_discrete_sequence=[
+                    THEME["blue"],
+                    THEME["pink"],
+                    THEME["cyan"],
+                    THEME["green"],
+                    THEME["red"],
+                    THEME["yellow"],
+                    THEME["lime"],
+                ],
+            )
+            user_task_chart.update_layout(
+                plot_bgcolor="white",
+                paper_bgcolor="white",
+                legend_title_text="User",
+                margin=dict(l=10, r=10, t=20, b=10),
+                height=max(380, 48 * tasks_with_work),
+            )
+            st.plotly_chart(user_task_chart, use_container_width=True)
+
+            completed_matrix = (
+                completed_by_user_task.pivot(
+                    index="User", columns="Tarefa", values="Concluídos"
+                )
+                .fillna(0)
+                .astype(int)
+                .reindex(columns=sorted(selected_tasks), fill_value=0)
+            )
+            completed_matrix["Total concluídos"] = completed_matrix.sum(axis=1)
+            completed_matrix = completed_matrix.sort_values(
+                "Total concluídos", ascending=False
+            )
+            st.subheader("Tabela de concluídos por user e tarefa")
+            st.dataframe(
+                completed_matrix.reset_index(),
+                hide_index=True,
+                use_container_width=True,
+            )
+
+        user_task_detail = (
+            assigned_data.pivot_table(
+                index=["User", "Tarefa"],
+                columns="Estado",
+                values="Descricao",
+                aggfunc="size",
+                fill_value=0,
+            )
+            .reindex(columns=["Concluído", "Em tratamento", "Pendente"], fill_value=0)
+            .rename(
+                columns={
+                    "Concluído": "Concluídos",
+                    "Em tratamento": "Em tratamento",
+                    "Pendente": "Pendentes",
+                }
+            )
+        )
+        user_task_detail["Total atribuídos"] = user_task_detail.sum(axis=1)
+        user_task_detail["Tempo médio de conclusão (dias)"] = (
+            assigned_data[assigned_data["Estado"].eq("Concluído")]
+            .groupby(["User", "Tarefa"])["Dias para concluir"]
+            .mean()
+            .round(1)
+        )
+        user_task_detail = user_task_detail.reset_index().sort_values(
+            ["User", "Tarefa"]
+        )
+        st.subheader("Detalhe por user e tarefa")
         st.dataframe(
-            completed_by_user_task.reset_index(),
+            user_task_detail,
             hide_index=True,
             use_container_width=True,
+            column_config={
+                "Tempo médio de conclusão (dias)": st.column_config.NumberColumn(
+                    "Tempo médio de conclusão (dias)", format="%.1f"
+                ),
+            },
         )
-
-    user_task_detail = (
-        assigned_data.pivot_table(
-            index=["User", "Tarefa"],
-            columns="Estado",
-            values="Descricao",
-            aggfunc="size",
-            fill_value=0,
+        st.download_button(
+            "Descarregar detalhe por user e tarefa (CSV)",
+            export_csv(user_task_detail),
+            file_name="analise_por_user_e_tarefa.csv",
+            mime="text/csv",
+            key="download_user_task_detail",
         )
-        .reindex(columns=["Concluído", "Em tratamento", "Pendente"], fill_value=0)
-        .rename(
-            columns={
-                "Concluído": "Concluídos",
-                "Em tratamento": "Em tratamento",
-                "Pendente": "Pendentes",
-            }
-        )
-    )
-    user_task_detail["Total atribuídos"] = user_task_detail.sum(axis=1)
-    user_task_detail["Tempo médio de conclusão (dias)"] = (
-        assigned_data[assigned_data["Estado"].eq("Concluído")]
-        .groupby(["User", "Tarefa"])["Dias para concluir"]
-        .mean()
-        .round(1)
-    )
-    user_task_detail = user_task_detail.reset_index().sort_values(
-        ["User", "Tarefa"]
-    )
-    st.subheader("Detalhe por user e tarefa")
-    st.dataframe(
-        user_task_detail,
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "Tempo médio de conclusão (dias)": st.column_config.NumberColumn(
-                "Tempo médio de conclusão (dias)", format="%.1f"
-            ),
-        },
-    )
-    st.download_button(
-        "Descarregar detalhe por user e tarefa (CSV)",
-        export_csv(user_task_detail),
-        file_name="analise_por_user_e_tarefa.csv",
-        mime="text/csv",
-        key="download_user_task_detail",
-    )
 
 st.caption("Paleta baseada nas cores oficiais da NOS.pt, com fundos neutros e suaves.")
