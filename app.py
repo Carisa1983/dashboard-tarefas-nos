@@ -269,133 +269,131 @@ if filtered.empty:
     st.info("Não existem registos para os filtros selecionados.")
     st.stop()
 
-total = len(filtered)
-counts = filtered["Estado"].value_counts()
-pending_count = int(counts.get("Pendente", 0))
-in_progress_count = int(counts.get("Em tratamento", 0))
-completed_count = int(counts.get("Concluído", 0))
-completion_rate = completed_count / total * 100 if total else 0
-average_days = filtered.loc[filtered["Estado"].eq("Concluído"), "Dias para concluir"].mean()
+task_tab, user_task_tab = st.tabs(["Tarefas", "User por tarefa"])
+with task_tab:
+    total = len(filtered)
+    counts = filtered["Estado"].value_counts()
+    pending_count = int(counts.get("Pendente", 0))
+    in_progress_count = int(counts.get("Em tratamento", 0))
+    completed_count = int(counts.get("Concluído", 0))
+    completion_rate = completed_count / total * 100 if total else 0
+    average_days = filtered.loc[filtered["Estado"].eq("Concluído"), "Dias para concluir"].mean()
 
-st.caption(f"Fonte: {source_label} · {total:,} registos no filtro".replace(",", " "))
-kpis = st.columns(5)
-kpis[0].metric("Total de registos", f"{total:,}".replace(",", " "))
-kpis[1].metric("Concluídos", f"{completed_count:,}".replace(",", " "))
-kpis[2].metric("Em tratamento", f"{in_progress_count:,}".replace(",", " "))
-kpis[3].metric("Pendentes", f"{pending_count:,}".replace(",", " "))
-kpis[4].metric("Taxa de conclusão", f"{completion_rate:.1f}%")
-average_text = f"{average_days:.1f} dias" if pd.notna(average_days) else "—"
-st.caption(
-    f"Tempo médio até à conclusão: **{average_text}**. "
-    "Pendente = sem responsável; em tratamento = com responsável, ainda sem conclusão."
-)
+    st.caption(f"Fonte: {source_label} · {total:,} registos no filtro".replace(",", " "))
+    kpis = st.columns(5)
+    kpis[0].metric("Total de registos", f"{total:,}".replace(",", " "))
+    kpis[1].metric("Concluídos", f"{completed_count:,}".replace(",", " "))
+    kpis[2].metric("Em tratamento", f"{in_progress_count:,}".replace(",", " "))
+    kpis[3].metric("Pendentes", f"{pending_count:,}".replace(",", " "))
+    kpis[4].metric("Taxa de conclusão", f"{completion_rate:.1f}%")
+    average_text = f"{average_days:.1f} dias" if pd.notna(average_days) else "—"
+    st.caption(
+        f"Tempo médio até à conclusão: **{average_text}**. "
+        "Pendente = sem responsável; em tratamento = com responsável, ainda sem conclusão."
+    )
 
-left_chart, right_chart = st.columns((1.4, 1))
-with left_chart:
-    st.subheader("Entradas e conclusões por mês")
-    entries = (
-        filtered.dropna(subset=["Data entrada"])
-        .assign(
-            Mês=lambda frame: frame["Data entrada"]
-            .dt.to_period("M")
-            .astype(str)
-            .where(frame["Data entrada"].dt.year.ge(2026), "Antes de 2026")
+    left_chart, right_chart = st.columns((1.4, 1))
+    with left_chart:
+        st.subheader("Entradas e conclusões por mês")
+        entries = (
+            filtered.dropna(subset=["Data entrada"])
+            .assign(
+                Mês=lambda frame: frame["Data entrada"]
+                .dt.to_period("M")
+                .astype(str)
+                .where(frame["Data entrada"].dt.year.ge(2026), "Antes de 2026")
+            )
+            .groupby("Mês")
+            .size()
+            .rename("Entradas")
         )
-        .groupby("Mês")
-        .size()
-        .rename("Entradas")
-    )
-    completed = (
-        filtered[filtered["Estado"].eq("Concluído")].dropna(subset=["Data tratamento"])
-        .assign(
-            Mês=lambda frame: frame["Data tratamento"]
-            .dt.to_period("M")
-            .astype(str)
-            .where(frame["Data tratamento"].dt.year.ge(2026), "Antes de 2026")
+        completed = (
+            filtered[filtered["Estado"].eq("Concluído")].dropna(subset=["Data tratamento"])
+            .assign(
+                Mês=lambda frame: frame["Data tratamento"]
+                .dt.to_period("M")
+                .astype(str)
+                .where(frame["Data tratamento"].dt.year.ge(2026), "Antes de 2026")
+            )
+            .groupby("Mês")
+            .size()
+            .rename("Concluídos")
         )
-        .groupby("Mês")
-        .size()
-        .rename("Concluídos")
-    )
-    monthly = pd.concat([entries, completed], axis=1).fillna(0)
-    monthly.index.name = "Mês"
-    month_order = ["Antes de 2026", *sorted(month for month in monthly.index if month != "Antes de 2026")]
-    monthly = monthly.reset_index().melt(
-        id_vars="Mês", var_name="Indicador", value_name="Registos"
-    )
-    monthly_chart = px.bar(
-        monthly,
-        x="Mês",
-        y="Registos",
-        color="Indicador",
-        barmode="group",
-        color_discrete_map={"Entradas": THEME["blue"], "Concluídos": THEME["pink"]},
-        category_orders={"Mês": month_order},
-        labels={"Mês": "Mês", "Registos": "Número de registos"},
-    )
-    monthly_chart.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        legend_title_text="",
-        margin=dict(l=10, r=10, t=20, b=10),
-    )
-    st.plotly_chart(monthly_chart, use_container_width=True)
+        monthly = pd.concat([entries, completed], axis=1).fillna(0)
+        monthly.index.name = "Mês"
+        month_order = ["Antes de 2026", *sorted(month for month in monthly.index if month != "Antes de 2026")]
+        monthly = monthly.reset_index().melt(
+            id_vars="Mês", var_name="Indicador", value_name="Registos"
+        )
+        monthly_chart = px.bar(
+            monthly,
+            x="Mês",
+            y="Registos",
+            color="Indicador",
+            barmode="group",
+            color_discrete_map={"Entradas": THEME["blue"], "Concluídos": THEME["pink"]},
+            category_orders={"Mês": month_order},
+            labels={"Mês": "Mês", "Registos": "Número de registos"},
+        )
+        monthly_chart.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            legend_title_text="",
+            margin=dict(l=10, r=10, t=20, b=10),
+        )
+        st.plotly_chart(monthly_chart, use_container_width=True)
 
-with right_chart:
-    st.subheader("Estado do stock")
-    status_summary = (
-        filtered["Estado"].value_counts().rename_axis("Estado").reset_index(name="Registos")
-    )
-    status_chart = px.pie(
-        status_summary,
-        names="Estado",
-        values="Registos",
-        hole=0.62,
-        color="Estado",
-        color_discrete_map=STATUS_COLORS,
-    )
-    status_chart.update_traces(textposition="inside", textinfo="percent+label")
-    status_chart.update_layout(
-        showlegend=False,
-        paper_bgcolor="white",
-        margin=dict(l=10, r=10, t=20, b=10),
-    )
-    st.plotly_chart(status_chart, use_container_width=True)
+    with right_chart:
+        st.subheader("Estado do stock")
+        status_summary = (
+            filtered["Estado"].value_counts().rename_axis("Estado").reset_index(name="Registos")
+        )
+        status_chart = px.pie(
+            status_summary,
+            names="Estado",
+            values="Registos",
+            hole=0.62,
+            color="Estado",
+            color_discrete_map=STATUS_COLORS,
+        )
+        status_chart.update_traces(textposition="inside", textinfo="percent+label")
+        status_chart.update_layout(
+            showlegend=False,
+            paper_bgcolor="white",
+            margin=dict(l=10, r=10, t=20, b=10),
+        )
+        st.plotly_chart(status_chart, use_container_width=True)
 
-st.subheader("Trabalho por tarefa")
-open_work = filtered[filtered["Estado"].ne("Concluído")]
-if open_work.empty:
-    st.success("Não há trabalho por concluir com os filtros selecionados.")
-else:
-    task_summary = (
-        open_work.groupby(["Tarefa", "Estado"])
-        .size()
-        .rename("Registos")
-        .reset_index()
-        .sort_values("Registos", ascending=True)
-    )
-    task_chart = px.bar(
-        task_summary,
-        x="Registos",
-        y="Tarefa",
-        color="Estado",
-        orientation="h",
-        barmode="stack",
-        color_discrete_map=STATUS_COLORS,
-        labels={"Tarefa": "Tarefa", "Registos": "Registos em aberto"},
-    )
-    task_chart.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        legend_title_text="",
-        margin=dict(l=10, r=10, t=20, b=10),
-    )
-    st.plotly_chart(task_chart, use_container_width=True)
+    st.subheader("Trabalho por tarefa")
+    open_work = filtered[filtered["Estado"].ne("Concluído")]
+    if open_work.empty:
+        st.success("Não há trabalho por concluir com os filtros selecionados.")
+    else:
+        task_summary = (
+            open_work.groupby(["Tarefa", "Estado"])
+            .size()
+            .rename("Registos")
+            .reset_index()
+            .sort_values("Registos", ascending=True)
+        )
+        task_chart = px.bar(
+            task_summary,
+            x="Registos",
+            y="Tarefa",
+            color="Estado",
+            orientation="h",
+            barmode="stack",
+            color_discrete_map=STATUS_COLORS,
+            labels={"Tarefa": "Tarefa", "Registos": "Registos em aberto"},
+        )
+        task_chart.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            legend_title_text="",
+            margin=dict(l=10, r=10, t=20, b=10),
+        )
+        st.plotly_chart(task_chart, use_container_width=True)
 
-tracking_tab, user_task_tab = st.tabs(
-    ["Acompanhamento dos registos", "📊 Registo por user e tarefa"]
-)
-with tracking_tab:
     st.subheader("Acompanhamento dos registos")
     pending = filtered[filtered["Estado"].eq("Pendente")].sort_values(
         "Dias em aberto", ascending=False, na_position="last"
