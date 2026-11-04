@@ -19,7 +19,7 @@ Dashboard interativo em Streamlit com separadores principais para apresentação
 - Carregamento de CSV ou Excel com várias folhas.
 - Normalização dos utilizadores para minúsculas, sem diferenças de acentos ou espaços exteriores.
 
-O ficheiro operacional `Quantidade_08.10.xlsx` é local e não é incluído no repositório. Carrega-o pela barra lateral para visualizar o dashboard; as folhas compatíveis são consolidadas na memória. Se existir uma cópia local em `data/stock_08_10.csv`, o dashboard também a utiliza automaticamente.
+O ficheiro operacional `Stock_Tarefas.xlsx` é local e não é incluído no repositório. Carrega-o pela barra lateral para visualizar o dashboard; as folhas compatíveis são consolidadas na memória. Se existir uma cópia local em `data/stock_08_10.csv`, o dashboard também a utiliza automaticamente.
 
 ## Estados
 
