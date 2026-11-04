@@ -419,7 +419,6 @@ if not pending_task_board.empty:
     in_progress_tab,
     all_tab,
     responsible_tab,
-    user_task_tab,
 ) = st.tabs(
     [
         f"Quadro de pendentes ({len(pending_task_board)} tarefas)",
@@ -427,7 +426,6 @@ if not pending_task_board.empty:
         f"Em tratamento ({in_progress_count})",
         f"Todos ({total})",
         "Por responsável",
-        "📊 Produção por user e tarefa",
     ]
 )
 display_columns = [
@@ -642,14 +640,22 @@ with responsible_tab:
         key="download_responsible_summary",
     )
 
-with user_task_tab:
-    with st.container(border=True):
-        st.header("Produção por user e tarefa")
+with st.container(border=True):
+    with st.container():
+        st.header("📊 Produção por user e tarefa")
         st.caption(
             "Veja o que cada user concluiu em cada tarefa. Os registos sem user "
             "atribuído são pendentes e não entram nesta análise."
         )
         assigned_data = filtered[filtered["User"].ne("")]
+        user_options = ["Todos os users", *sorted(assigned_data["User"].unique())]
+        selected_user = st.selectbox(
+            "Filtrar produção por user",
+            user_options,
+            key="user_task_user_filter",
+        )
+        if selected_user != "Todos os users":
+            assigned_data = assigned_data[assigned_data["User"].eq(selected_user)]
         completed_by_user_task = (
             assigned_data[assigned_data["Estado"].eq("Concluído")]
             .groupby(["User", "Tarefa"])
