@@ -499,7 +499,45 @@ with in_progress_tab:
         )
 
 with all_tab:
-    all_records = filtered.sort_values("Data entrada", ascending=False, na_position="last")
+    all_records = filtered.assign(
+        User=lambda frame: frame["User"].replace("", "(Sem responsável)")
+    )
+    grouped_records = (
+        all_records.groupby(["Tarefa", "User", "Estado"])
+        .size()
+        .unstack("Estado", fill_value=0)
+        .reindex(columns=["Pendente", "Em tratamento", "Concluído"], fill_value=0)
+        .rename(
+            columns={
+                "Pendente": "Pendentes",
+                "Em tratamento": "Em tratamento",
+                "Concluído": "Concluídos",
+            }
+        )
+    )
+    grouped_records["Total"] = grouped_records.sum(axis=1)
+    grouped_records = (
+        grouped_records.reset_index()
+        .sort_values(["Tarefa", "User"], kind="stable")
+    )
+    st.subheader("Resumo agrupado por tarefa e user")
+    st.caption(
+        "Os registos sem user atribuído aparecem como “(Sem responsável)” "
+        "e correspondem a pendentes."
+    )
+    st.dataframe(grouped_records, hide_index=True, use_container_width=True)
+    st.download_button(
+        "Descarregar resumo por tarefa e user (CSV)",
+        export_csv(grouped_records),
+        file_name="resumo_por_tarefa_e_user.csv",
+        mime="text/csv",
+        key="download_all_grouped",
+    )
+
+    st.subheader("Registos detalhados")
+    all_records = all_records.sort_values(
+        ["Tarefa", "User", "Data entrada"], ascending=[True, True, False], na_position="last"
+    )
     st.dataframe(all_records[display_columns], hide_index=True, use_container_width=True)
     st.download_button(
         "Descarregar registos filtrados (CSV)",

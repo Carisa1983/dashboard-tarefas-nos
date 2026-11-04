@@ -12,6 +12,7 @@ Dashboard interativo em Streamlit para acompanhar entradas, conclusões e trabal
 - Quadro de pendentes agrupado por tarefa, com antiguidade e exportação CSV.
 - Separador de análise por responsável atribuído, com distribuição por estado, taxa de conclusão e tempo médio; os pendentes sem responsável ficam excluídos.
 - Separador de concluídos e detalhe por user e tarefa, com exportação CSV; os registos sem user atribuído ficam excluídos.
+- No separador “Todos”, resumo agrupado por tarefa e user com contagens por estado e tabela detalhada ordenada pelos mesmos campos.
 - Filtros por tarefa, responsável, período de entrada e descrição.
 - Separadores próprios para pendentes, registos em tratamento e todos os registos.
 - Exportação dos resultados filtrados para CSV.
