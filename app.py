@@ -392,385 +392,390 @@ else:
     )
     st.plotly_chart(task_chart, use_container_width=True)
 
-st.subheader("Acompanhamento dos registos")
-pending = filtered[filtered["Estado"].eq("Pendente")].sort_values(
-    "Dias em aberto", ascending=False, na_position="last"
+tracking_tab, user_task_tab = st.tabs(
+    ["Acompanhamento dos registos", "📊 Produção por user e tarefa"]
 )
-pending_task_board = (
-    pending.groupby("Tarefa")
-    .agg(
-        Pendentes=("Tarefa", "size"),
-        **{
-            "Data mais antiga": ("Data entrada", "min"),
-            "Dias do mais antigo": ("Dias em aberto", "max"),
-        },
-    )
-    .reset_index()
-    .sort_values(["Pendentes", "Dias do mais antigo"], ascending=[False, False])
-)
-if not pending_task_board.empty:
-    pending_task_board["% dos pendentes"] = (
-        pending_task_board["Pendentes"].div(pending_count).mul(100).round(1)
-    )
-
-(
-    pending_board_tab,
-    pending_tab,
-    in_progress_tab,
-    all_tab,
-    responsible_tab,
-) = st.tabs(
-    [
-        f"Quadro de pendentes ({len(pending_task_board)} tarefas)",
-        f"Pendentes ({pending_count})",
-        f"Em tratamento ({in_progress_count})",
-        f"Todos ({total})",
-        "Por responsável",
-    ]
-)
-display_columns = [
-    "Tarefa",
-    "Descricao",
-    "Data entrada",
-    "User",
-    "Data tratamento",
-    "Dias em aberto",
-    "Estado",
-]
-
-with pending_board_tab:
-    st.caption("Resumo das tarefas com registos pendentes, ordenadas por volume.")
-    if pending_task_board.empty:
-        st.success("Não há tarefas pendentes com os filtros selecionados.")
-    else:
-        st.dataframe(
-            pending_task_board,
-            hide_index=True,
-            use_container_width=True,
-            column_config={
-                "Pendentes": st.column_config.NumberColumn("Pendentes", format="%d"),
-                "% dos pendentes": st.column_config.NumberColumn(
-                    "% dos pendentes", format="%.1f%%"
-                ),
-                "Data mais antiga": st.column_config.DateColumn(
-                    "Data mais antiga", format="DD/MM/YYYY"
-                ),
-                "Dias do mais antigo": st.column_config.NumberColumn(
-                    "Dias do mais antigo", format="%d"
-                ),
-            },
-        )
-        st.download_button(
-            "Descarregar quadro de pendentes (CSV)",
-            export_csv(pending_task_board),
-            file_name="quadro_pendentes_por_tarefa.csv",
-            mime="text/csv",
-            key="download_pending_board",
-        )
-
-with pending_tab:
-    if pending.empty:
-        st.success("Não há registos pendentes.")
-    else:
-        st.dataframe(pending[display_columns], hide_index=True, use_container_width=True)
-        st.download_button(
-            "Descarregar pendentes (CSV)",
-            export_csv(pending[display_columns]),
-            file_name="pendentes_nos.csv",
-            mime="text/csv",
-            key="download_pending",
-        )
-
-with in_progress_tab:
-    in_progress = filtered[filtered["Estado"].eq("Em tratamento")].sort_values(
+with tracking_tab:
+    st.subheader("Acompanhamento dos registos")
+    pending = filtered[filtered["Estado"].eq("Pendente")].sort_values(
         "Dias em aberto", ascending=False, na_position="last"
     )
-    if in_progress.empty:
-        st.success("Não há registos em tratamento.")
-    else:
-        st.dataframe(in_progress[display_columns], hide_index=True, use_container_width=True)
-        st.download_button(
-            "Descarregar em tratamento (CSV)",
-            export_csv(in_progress[display_columns]),
-            file_name="em_tratamento_nos.csv",
-            mime="text/csv",
-            key="download_in_progress",
+    pending_task_board = (
+        pending.groupby("Tarefa")
+        .agg(
+            Pendentes=("Tarefa", "size"),
+            **{
+                "Data mais antiga": ("Data entrada", "min"),
+                "Dias do mais antigo": ("Dias em aberto", "max"),
+            },
+        )
+        .reset_index()
+        .sort_values(["Pendentes", "Dias do mais antigo"], ascending=[False, False])
+    )
+    if not pending_task_board.empty:
+        pending_task_board["% dos pendentes"] = (
+            pending_task_board["Pendentes"].div(pending_count).mul(100).round(1)
         )
 
-with all_tab:
-    all_records = filtered.assign(
-        User=lambda frame: frame["User"].replace("", "(Sem responsável)")
+    (
+        pending_board_tab,
+        pending_tab,
+        in_progress_tab,
+        all_tab,
+        responsible_tab,
+    ) = st.tabs(
+        [
+            f"Quadro de pendentes ({len(pending_task_board)} tarefas)",
+            f"Pendentes ({pending_count})",
+            f"Em tratamento ({in_progress_count})",
+            f"Todos ({total})",
+            "Por responsável",
+        ]
     )
-    grouped_records = (
-        all_records.groupby(["Tarefa", "User", "Estado"])
-        .size()
-        .unstack("Estado", fill_value=0)
-        .reindex(columns=["Pendente", "Em tratamento", "Concluído"], fill_value=0)
-        .rename(
-            columns={
-                "Pendente": "Pendentes",
-                "Em tratamento": "Em tratamento",
-                "Concluído": "Concluídos",
-            }
-        )
-    )
-    grouped_records["Total"] = grouped_records.sum(axis=1)
-    grouped_records = (
-        grouped_records.reset_index()
-        .sort_values(["Tarefa", "User"], kind="stable")
-    )
-    st.subheader("Resumo agrupado por tarefa e user")
-    st.caption(
-        "Os registos sem user atribuído aparecem como “(Sem responsável)” "
-        "e correspondem a pendentes."
-    )
-    st.dataframe(grouped_records, hide_index=True, use_container_width=True)
-    st.download_button(
-        "Descarregar resumo por tarefa e user (CSV)",
-        export_csv(grouped_records),
-        file_name="resumo_por_tarefa_e_user.csv",
-        mime="text/csv",
-        key="download_all_grouped",
-    )
+    display_columns = [
+        "Tarefa",
+        "Descricao",
+        "Data entrada",
+        "User",
+        "Data tratamento",
+        "Dias em aberto",
+        "Estado",
+    ]
 
-    st.subheader("Registos detalhados")
-    all_records = all_records.sort_values(
-        ["Tarefa", "User", "Data entrada"], ascending=[True, True, False], na_position="last"
-    )
-    st.dataframe(all_records[display_columns], hide_index=True, use_container_width=True)
-    st.download_button(
-        "Descarregar registos filtrados (CSV)",
-        export_csv(all_records[display_columns]),
-        file_name="stock_nos_filtrado.csv",
-        mime="text/csv",
-        key="download_all",
-    )
-
-with responsible_tab:
-    st.caption(
-        "Análise dos registos atribuídos, conforme os filtros selecionados. "
-        "Os pendentes sem responsável são apresentados apenas no quadro de pendentes."
-    )
-    responsible_data = filtered[filtered["User"].ne("")].assign(
-        Responsável=lambda frame: frame["User"]
-    )
-    responsible_summary = (
-        responsible_data.pivot_table(
-            index="Responsável",
-            columns="Estado",
-            values="Descricao",
-            aggfunc="size",
-            fill_value=0,
-        )
-        .reindex(columns=["Pendente", "Em tratamento", "Concluído"], fill_value=0)
-        .rename(
-            columns={
-                "Pendente": "Pendentes",
-                "Em tratamento": "Em tratamento",
-                "Concluído": "Concluídos",
-            }
-        )
-    )
-    responsible_summary["Total"] = responsible_summary.sum(axis=1)
-    responsible_summary["Taxa de conclusão"] = (
-        responsible_summary["Concluídos"]
-        .div(responsible_summary["Total"])
-        .mul(100)
-        .round(1)
-    )
-    responsible_summary["Tempo médio até à conclusão (dias)"] = (
-        responsible_data[responsible_data["Estado"].eq("Concluído")]
-        .groupby("Responsável")["Dias para concluir"]
-        .mean()
-        .round(1)
-    )
-    responsible_summary = (
-        responsible_summary.reset_index()
-        .sort_values(["Total", "Responsável"], ascending=[False, True])
-    )
-    responsible_chart_data = responsible_summary.melt(
-        id_vars="Responsável",
-        value_vars=["Pendentes", "Em tratamento", "Concluídos"],
-        var_name="Estado",
-        value_name="Registos",
-    )
-    responsible_chart = px.bar(
-        responsible_chart_data,
-        x="Registos",
-        y="Responsável",
-        color="Estado",
-        orientation="h",
-        barmode="stack",
-        category_orders={
-            "Responsável": responsible_summary["Responsável"].tolist(),
-            "Estado": ["Pendentes", "Em tratamento", "Concluídos"],
-        },
-        color_discrete_map={
-            "Pendentes": STATUS_COLORS["Pendente"],
-            "Em tratamento": STATUS_COLORS["Em tratamento"],
-            "Concluídos": STATUS_COLORS["Concluído"],
-        },
-        labels={"Responsável": "Responsável", "Registos": "Registos"},
-    )
-    responsible_chart.update_layout(
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        legend_title_text="",
-        margin=dict(l=10, r=10, t=20, b=10),
-    )
-    st.plotly_chart(responsible_chart, use_container_width=True)
-    st.dataframe(
-        responsible_summary,
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "Taxa de conclusão": st.column_config.NumberColumn(
-                "Taxa de conclusão", format="%.1f%%"
-            ),
-            "Tempo médio até à conclusão (dias)": st.column_config.NumberColumn(
-                "Tempo médio até à conclusão (dias)", format="%.1f"
-            ),
-        },
-    )
-    st.download_button(
-        "Descarregar análise por responsável (CSV)",
-        export_csv(responsible_summary),
-        file_name="analise_por_responsavel.csv",
-        mime="text/csv",
-        key="download_responsible_summary",
-    )
-
-with st.container(border=True):
-    with st.container():
-        st.header("📊 Produção por user e tarefa")
-        st.caption(
-            "Veja o que cada user concluiu em cada tarefa. Os registos sem user "
-            "atribuído são pendentes e não entram nesta análise."
-        )
-        assigned_data = filtered[filtered["User"].ne("")]
-        user_options = ["Todos os users", *sorted(assigned_data["User"].unique())]
-        selected_user = st.selectbox(
-            "Filtrar produção por user",
-            user_options,
-            key="user_task_user_filter",
-        )
-        if selected_user != "Todos os users":
-            assigned_data = assigned_data[assigned_data["User"].eq(selected_user)]
-        completed_by_user_task = (
-            assigned_data[assigned_data["Estado"].eq("Concluído")]
-            .groupby(["User", "Tarefa"])
-            .size()
-            .rename("Concluídos")
-            .reset_index()
-        )
-        total_completed = int(completed_by_user_task["Concluídos"].sum())
-        users_with_work = int(assigned_data["User"].nunique())
-        tasks_with_work = int(completed_by_user_task["Tarefa"].nunique())
-        metrics = st.columns(3)
-        metrics[0].metric(
-            "Registos concluídos", f"{total_completed:,}".replace(",", " ")
-        )
-        metrics[1].metric("Users com registos", users_with_work)
-        metrics[2].metric("Tarefas concluídas", tasks_with_work)
-
-        if completed_by_user_task.empty:
-            st.info("Não há registos concluídos por user nos filtros selecionados.")
+    with pending_board_tab:
+        st.caption("Resumo das tarefas com registos pendentes, ordenadas por volume.")
+        if pending_task_board.empty:
+            st.success("Não há tarefas pendentes com os filtros selecionados.")
         else:
-            st.subheader("Gráfico de concluídos por tarefa e user")
-            user_task_chart = px.bar(
-                completed_by_user_task,
-                x="Concluídos",
-                y="Tarefa",
-                color="User",
-                orientation="h",
-                barmode="group",
-                category_orders={
-                    "Tarefa": sorted(completed_by_user_task["Tarefa"].unique()),
-                    "User": sorted(completed_by_user_task["User"].unique()),
-                },
-                labels={"Tarefa": "Tarefa", "Concluídos": "Registos concluídos"},
-                color_discrete_sequence=[
-                    THEME["blue"],
-                    THEME["pink"],
-                    THEME["cyan"],
-                    THEME["green"],
-                    THEME["red"],
-                    THEME["yellow"],
-                    THEME["lime"],
-                ],
-            )
-            user_task_chart.update_layout(
-                plot_bgcolor="white",
-                paper_bgcolor="white",
-                legend_title_text="User",
-                margin=dict(l=10, r=10, t=20, b=10),
-                height=max(380, 48 * tasks_with_work),
-            )
-            st.plotly_chart(user_task_chart, use_container_width=True)
-
-            completed_matrix = (
-                completed_by_user_task.pivot(
-                    index="User", columns="Tarefa", values="Concluídos"
-                )
-                .fillna(0)
-                .astype(int)
-                .reindex(columns=sorted(selected_tasks), fill_value=0)
-            )
-            completed_matrix["Total concluídos"] = completed_matrix.sum(axis=1)
-            completed_matrix = completed_matrix.sort_values(
-                "Total concluídos", ascending=False
-            )
-            st.subheader("Tabela de concluídos por user e tarefa")
             st.dataframe(
-                completed_matrix.reset_index(),
+                pending_task_board,
                 hide_index=True,
                 use_container_width=True,
+                column_config={
+                    "Pendentes": st.column_config.NumberColumn("Pendentes", format="%d"),
+                    "% dos pendentes": st.column_config.NumberColumn(
+                        "% dos pendentes", format="%.1f%%"
+                    ),
+                    "Data mais antiga": st.column_config.DateColumn(
+                        "Data mais antiga", format="DD/MM/YYYY"
+                    ),
+                    "Dias do mais antigo": st.column_config.NumberColumn(
+                        "Dias do mais antigo", format="%d"
+                    ),
+                },
+            )
+            st.download_button(
+                "Descarregar quadro de pendentes (CSV)",
+                export_csv(pending_task_board),
+                file_name="quadro_pendentes_por_tarefa.csv",
+                mime="text/csv",
+                key="download_pending_board",
             )
 
-        user_task_detail = (
-            assigned_data.pivot_table(
-                index=["User", "Tarefa"],
+    with pending_tab:
+        if pending.empty:
+            st.success("Não há registos pendentes.")
+        else:
+            st.dataframe(pending[display_columns], hide_index=True, use_container_width=True)
+            st.download_button(
+                "Descarregar pendentes (CSV)",
+                export_csv(pending[display_columns]),
+                file_name="pendentes_nos.csv",
+                mime="text/csv",
+                key="download_pending",
+            )
+
+    with in_progress_tab:
+        in_progress = filtered[filtered["Estado"].eq("Em tratamento")].sort_values(
+            "Dias em aberto", ascending=False, na_position="last"
+        )
+        if in_progress.empty:
+            st.success("Não há registos em tratamento.")
+        else:
+            st.dataframe(in_progress[display_columns], hide_index=True, use_container_width=True)
+            st.download_button(
+                "Descarregar em tratamento (CSV)",
+                export_csv(in_progress[display_columns]),
+                file_name="em_tratamento_nos.csv",
+                mime="text/csv",
+                key="download_in_progress",
+            )
+
+    with all_tab:
+        all_records = filtered.assign(
+            User=lambda frame: frame["User"].replace("", "(Sem responsável)")
+        )
+        grouped_records = (
+            all_records.groupby(["Tarefa", "User", "Estado"])
+            .size()
+            .unstack("Estado", fill_value=0)
+            .reindex(columns=["Pendente", "Em tratamento", "Concluído"], fill_value=0)
+            .rename(
+                columns={
+                    "Pendente": "Pendentes",
+                    "Em tratamento": "Em tratamento",
+                    "Concluído": "Concluídos",
+                }
+            )
+        )
+        grouped_records["Total"] = grouped_records.sum(axis=1)
+        grouped_records = (
+            grouped_records.reset_index()
+            .sort_values(["Tarefa", "User"], kind="stable")
+        )
+        st.subheader("Resumo agrupado por tarefa e user")
+        st.caption(
+            "Os registos sem user atribuído aparecem como “(Sem responsável)” "
+            "e correspondem a pendentes."
+        )
+        st.dataframe(grouped_records, hide_index=True, use_container_width=True)
+        st.download_button(
+            "Descarregar resumo por tarefa e user (CSV)",
+            export_csv(grouped_records),
+            file_name="resumo_por_tarefa_e_user.csv",
+            mime="text/csv",
+            key="download_all_grouped",
+        )
+
+        st.subheader("Registos detalhados")
+        all_records = all_records.sort_values(
+            ["Tarefa", "User", "Data entrada"], ascending=[True, True, False], na_position="last"
+        )
+        st.dataframe(all_records[display_columns], hide_index=True, use_container_width=True)
+        st.download_button(
+            "Descarregar registos filtrados (CSV)",
+            export_csv(all_records[display_columns]),
+            file_name="stock_nos_filtrado.csv",
+            mime="text/csv",
+            key="download_all",
+        )
+
+    with responsible_tab:
+        st.caption(
+            "Análise dos registos atribuídos, conforme os filtros selecionados. "
+            "Os pendentes sem responsável são apresentados apenas no quadro de pendentes."
+        )
+        responsible_data = filtered[filtered["User"].ne("")].assign(
+            Responsável=lambda frame: frame["User"]
+        )
+        responsible_summary = (
+            responsible_data.pivot_table(
+                index="Responsável",
                 columns="Estado",
                 values="Descricao",
                 aggfunc="size",
                 fill_value=0,
             )
-            .reindex(columns=["Concluído", "Em tratamento", "Pendente"], fill_value=0)
+            .reindex(columns=["Pendente", "Em tratamento", "Concluído"], fill_value=0)
             .rename(
                 columns={
-                    "Concluído": "Concluídos",
-                    "Em tratamento": "Em tratamento",
                     "Pendente": "Pendentes",
+                    "Em tratamento": "Em tratamento",
+                    "Concluído": "Concluídos",
                 }
             )
         )
-        user_task_detail["Total atribuídos"] = user_task_detail.sum(axis=1)
-        user_task_detail["Tempo médio de conclusão (dias)"] = (
-            assigned_data[assigned_data["Estado"].eq("Concluído")]
-            .groupby(["User", "Tarefa"])["Dias para concluir"]
+        responsible_summary["Total"] = responsible_summary.sum(axis=1)
+        responsible_summary["Taxa de conclusão"] = (
+            responsible_summary["Concluídos"]
+            .div(responsible_summary["Total"])
+            .mul(100)
+            .round(1)
+        )
+        responsible_summary["Tempo médio até à conclusão (dias)"] = (
+            responsible_data[responsible_data["Estado"].eq("Concluído")]
+            .groupby("Responsável")["Dias para concluir"]
             .mean()
             .round(1)
         )
-        user_task_detail = user_task_detail.reset_index().sort_values(
-            ["User", "Tarefa"]
+        responsible_summary = (
+            responsible_summary.reset_index()
+            .sort_values(["Total", "Responsável"], ascending=[False, True])
         )
-        st.subheader("Detalhe por user e tarefa")
+        responsible_chart_data = responsible_summary.melt(
+            id_vars="Responsável",
+            value_vars=["Pendentes", "Em tratamento", "Concluídos"],
+            var_name="Estado",
+            value_name="Registos",
+        )
+        responsible_chart = px.bar(
+            responsible_chart_data,
+            x="Registos",
+            y="Responsável",
+            color="Estado",
+            orientation="h",
+            barmode="stack",
+            category_orders={
+                "Responsável": responsible_summary["Responsável"].tolist(),
+                "Estado": ["Pendentes", "Em tratamento", "Concluídos"],
+            },
+            color_discrete_map={
+                "Pendentes": STATUS_COLORS["Pendente"],
+                "Em tratamento": STATUS_COLORS["Em tratamento"],
+                "Concluídos": STATUS_COLORS["Concluído"],
+            },
+            labels={"Responsável": "Responsável", "Registos": "Registos"},
+        )
+        responsible_chart.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            legend_title_text="",
+            margin=dict(l=10, r=10, t=20, b=10),
+        )
+        st.plotly_chart(responsible_chart, use_container_width=True)
         st.dataframe(
-            user_task_detail,
+            responsible_summary,
             hide_index=True,
             use_container_width=True,
             column_config={
-                "Tempo médio de conclusão (dias)": st.column_config.NumberColumn(
-                    "Tempo médio de conclusão (dias)", format="%.1f"
+                "Taxa de conclusão": st.column_config.NumberColumn(
+                    "Taxa de conclusão", format="%.1f%%"
+                ),
+                "Tempo médio até à conclusão (dias)": st.column_config.NumberColumn(
+                    "Tempo médio até à conclusão (dias)", format="%.1f"
                 ),
             },
         )
         st.download_button(
-            "Descarregar detalhe por user e tarefa (CSV)",
-            export_csv(user_task_detail),
-            file_name="analise_por_user_e_tarefa.csv",
+            "Descarregar análise por responsável (CSV)",
+            export_csv(responsible_summary),
+            file_name="analise_por_responsavel.csv",
             mime="text/csv",
-            key="download_user_task_detail",
+            key="download_responsible_summary",
         )
+
+with user_task_tab:
+    with st.container(border=True):
+        with st.container():
+            st.header("📊 Produção por user e tarefa")
+            st.caption(
+                "Veja o que cada user concluiu em cada tarefa. Os registos sem user "
+                "atribuído são pendentes e não entram nesta análise."
+            )
+            assigned_data = filtered[filtered["User"].ne("")]
+            user_options = ["Todos os users", *sorted(assigned_data["User"].unique())]
+            selected_user = st.selectbox(
+                "Filtrar produção por user",
+                user_options,
+                key="user_task_user_filter",
+            )
+            if selected_user != "Todos os users":
+                assigned_data = assigned_data[assigned_data["User"].eq(selected_user)]
+            completed_by_user_task = (
+                assigned_data[assigned_data["Estado"].eq("Concluído")]
+                .groupby(["User", "Tarefa"])
+                .size()
+                .rename("Concluídos")
+                .reset_index()
+            )
+            total_completed = int(completed_by_user_task["Concluídos"].sum())
+            users_with_work = int(assigned_data["User"].nunique())
+            tasks_with_work = int(completed_by_user_task["Tarefa"].nunique())
+            metrics = st.columns(3)
+            metrics[0].metric(
+                "Registos concluídos", f"{total_completed:,}".replace(",", " ")
+            )
+            metrics[1].metric("Users com registos", users_with_work)
+            metrics[2].metric("Tarefas concluídas", tasks_with_work)
+
+            if completed_by_user_task.empty:
+                st.info("Não há registos concluídos por user nos filtros selecionados.")
+            else:
+                st.subheader("Gráfico de concluídos por tarefa e user")
+                user_task_chart = px.bar(
+                    completed_by_user_task,
+                    x="Concluídos",
+                    y="Tarefa",
+                    color="User",
+                    orientation="h",
+                    barmode="group",
+                    category_orders={
+                        "Tarefa": sorted(completed_by_user_task["Tarefa"].unique()),
+                        "User": sorted(completed_by_user_task["User"].unique()),
+                    },
+                    labels={"Tarefa": "Tarefa", "Concluídos": "Registos concluídos"},
+                    color_discrete_sequence=[
+                        THEME["blue"],
+                        THEME["pink"],
+                        THEME["cyan"],
+                        THEME["green"],
+                        THEME["red"],
+                        THEME["yellow"],
+                        THEME["lime"],
+                    ],
+                )
+                user_task_chart.update_layout(
+                    plot_bgcolor="white",
+                    paper_bgcolor="white",
+                    legend_title_text="User",
+                    margin=dict(l=10, r=10, t=20, b=10),
+                    height=max(380, 48 * tasks_with_work),
+                )
+                st.plotly_chart(user_task_chart, use_container_width=True)
+
+                completed_matrix = (
+                    completed_by_user_task.pivot(
+                        index="User", columns="Tarefa", values="Concluídos"
+                    )
+                    .fillna(0)
+                    .astype(int)
+                    .reindex(columns=sorted(selected_tasks), fill_value=0)
+                )
+                completed_matrix["Total concluídos"] = completed_matrix.sum(axis=1)
+                completed_matrix = completed_matrix.sort_values(
+                    "Total concluídos", ascending=False
+                )
+                st.subheader("Tabela de concluídos por user e tarefa")
+                st.dataframe(
+                    completed_matrix.reset_index(),
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+            user_task_detail = (
+                assigned_data.pivot_table(
+                    index=["User", "Tarefa"],
+                    columns="Estado",
+                    values="Descricao",
+                    aggfunc="size",
+                    fill_value=0,
+                )
+                .reindex(columns=["Concluído", "Em tratamento", "Pendente"], fill_value=0)
+                .rename(
+                    columns={
+                        "Concluído": "Concluídos",
+                        "Em tratamento": "Em tratamento",
+                        "Pendente": "Pendentes",
+                    }
+                )
+            )
+            user_task_detail["Total atribuídos"] = user_task_detail.sum(axis=1)
+            user_task_detail["Tempo médio de conclusão (dias)"] = (
+                assigned_data[assigned_data["Estado"].eq("Concluído")]
+                .groupby(["User", "Tarefa"])["Dias para concluir"]
+                .mean()
+                .round(1)
+            )
+            user_task_detail = user_task_detail.reset_index().sort_values(
+                ["User", "Tarefa"]
+            )
+            st.subheader("Detalhe por user e tarefa")
+            st.dataframe(
+                user_task_detail,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "Tempo médio de conclusão (dias)": st.column_config.NumberColumn(
+                        "Tempo médio de conclusão (dias)", format="%.1f"
+                    ),
+                },
+            )
+            st.download_button(
+                "Descarregar detalhe por user e tarefa (CSV)",
+                export_csv(user_task_detail),
+                file_name="analise_por_user_e_tarefa.csv",
+                mime="text/csv",
+                key="download_user_task_detail",
+            )
 
 st.caption("Paleta baseada nas cores oficiais da NOS.pt, com fundos neutros e suaves.")
