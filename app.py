@@ -105,6 +105,23 @@ def load_uploaded_data(filename, file_bytes):
     return pd.concat(frames, ignore_index=True), skipped_sheets
 
 
+def parse_date_series(series):
+    numeric_mask = series.map(
+        lambda value: pd.api.types.is_number(value) and not isinstance(value, bool)
+    )
+    parsed_dates = pd.to_datetime(
+        series.where(~numeric_mask), errors="coerce", dayfirst=True
+    )
+    excel_serials = pd.to_numeric(series.where(numeric_mask), errors="coerce")
+    excel_dates = pd.to_datetime(
+        excel_serials,
+        unit="D",
+        origin="1899-12-30",
+        errors="coerce",
+    )
+    return parsed_dates.fillna(excel_dates)
+
+
 def clean_dataframe(df):
     df = normalize_columns(df.copy())
     missing = [column for column in REQUIRED_COLUMNS if column not in df.columns]
@@ -128,8 +145,8 @@ def clean_dataframe(df):
             regex=True,
         )
     )
-    df["Data entrada"] = pd.to_datetime(df["Data entrada"], errors="coerce", dayfirst=True)
-    df["Data tratamento"] = pd.to_datetime(df["Data tratamento"], errors="coerce", dayfirst=True)
+    df["Data entrada"] = parse_date_series(df["Data entrada"])
+    df["Data tratamento"] = parse_date_series(df["Data tratamento"])
 
     df["Estado"] = "Pendente"
     assigned = df["User"].ne("")
@@ -269,7 +286,9 @@ if filtered.empty:
     st.info("Não existem registos para os filtros selecionados.")
     st.stop()
 
-task_tab, user_task_tab = st.tabs(["Tarefas", "User por tarefa"])
+task_tab, user_task_tab, user_task_period_tab = st.tabs(
+    ["Tarefas", "User por tarefa", "User - tarefa - dia e mês"]
+)
 with task_tab:
     total = len(filtered)
     counts = filtered["Estado"].value_counts()
@@ -775,5 +794,83 @@ with user_task_tab:
                 mime="text/csv",
                 key="download_user_task_detail",
             )
+
+with user_task_period_tab:
+    st.header("Produção por user, tarefa e período")
+    st.caption(
+        "Registos concluídos agrupados pela data de tratamento. Escolhe a vista diária "
+        "ou mensal e, se quiseres, filtra por user."
+    )
+    period_col, user_col = st.columns(2)
+    with period_col:
+        period_granularity = st.radio(
+            "Agrupar por",
+            ["Dia", "Mês"],
+            horizontal=True,
+            key="user_task_period_granularity",
+        )
+
+    completed_period_data = filtered[
+        filtered["User"].ne("")
+        & filtered["Estado"].eq("Concluído")
+        & filtered["Data tratamento"].notna()
+    ].copy()
+    period_users = ["Todos os users", *sorted(completed_period_data["User"].unique())]
+    with user_col:
+        period_user = st.selectbox(
+            "Filtrar por user",
+            period_users,
+            key="user_task_period_user",
+        )
+    if period_user != "Todos os users":
+        completed_period_data = completed_period_data[
+            completed_period_data["User"].eq(period_user)
+        ]
+
+    period_format = "%d/%m/%Y" if period_granularity == "Dia" else "%m/%Y"
+    period_label = "Dia" if period_granularity == "Dia" else "Mês"
+    if completed_period_data.empty:
+        st.info("Não há registos concluídos com data de tratamento para estes filtros.")
+    else:
+        if period_granularity == "Dia":
+            completed_period_data["_Período"] = completed_period_data[
+                "Data tratamento"
+            ].dt.normalize()
+        else:
+            completed_period_data["_Período"] = completed_period_data[
+                "Data tratamento"
+            ].dt.to_period("M").dt.to_timestamp()
+        user_task_period = (
+            completed_period_data.groupby(["User", "Tarefa", "_Período"])
+            .size()
+            .rename("Registos concluídos")
+            .reset_index()
+            .sort_values(["_Período", "User", "Tarefa"], kind="stable")
+        )
+        user_task_period[period_label] = user_task_period["_Período"].dt.strftime(
+            period_format
+        )
+        user_task_period = user_task_period[
+            ["User", "Tarefa", period_label, "Registos concluídos"]
+        ]
+        total_period_records = int(user_task_period["Registos concluídos"].sum())
+        period_metrics = st.columns(3)
+        period_metrics[0].metric(
+            "Registos concluídos", f"{total_period_records:,}".replace(",", " ")
+        )
+        period_metrics[1].metric("Users", user_task_period["User"].nunique())
+        period_metrics[2].metric("Tarefas", user_task_period["Tarefa"].nunique())
+        st.dataframe(
+            user_task_period,
+            hide_index=True,
+            use_container_width=True,
+        )
+        st.download_button(
+            "Descarregar produção por user, tarefa e período (CSV)",
+            export_csv(user_task_period),
+            file_name="producao_por_user_tarefa_periodo.csv",
+            mime="text/csv",
+            key="download_user_task_period",
+        )
 
 st.caption("Paleta baseada nas cores oficiais da NOS.pt, com fundos neutros e suaves.")
