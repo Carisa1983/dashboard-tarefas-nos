@@ -796,10 +796,10 @@ with user_task_tab:
             )
 
 with user_task_period_tab:
-    st.header("Produção por user, tarefa e período")
+    st.header("Produção por período e user")
     st.caption(
-        "Registos concluídos agrupados pela data de tratamento. Escolhe a vista diária "
-        "ou mensal e, se quiseres, filtra por user."
+        "Registos concluídos agrupados pela data de tratamento, user e total. "
+        "Os filtros de tarefa e user permitem restringir a análise."
     )
     period_col, user_col = st.columns(2)
     with period_col:
@@ -840,35 +840,37 @@ with user_task_period_tab:
             completed_period_data["_Período"] = completed_period_data[
                 "Data tratamento"
             ].dt.to_period("M").dt.to_timestamp()
-        user_task_period = (
-            completed_period_data.groupby(["User", "Tarefa", "_Período"])
+        period_user_totals = (
+            completed_period_data.groupby(["_Período", "User"])
             .size()
             .rename("Registos concluídos")
             .reset_index()
-            .sort_values(["_Período", "User", "Tarefa"], kind="stable")
+            .sort_values(["_Período", "User"], kind="stable")
         )
-        user_task_period[period_label] = user_task_period["_Período"].dt.strftime(
+        period_user_totals[period_label] = period_user_totals["_Período"].dt.strftime(
             period_format
         )
-        user_task_period = user_task_period[
-            ["User", "Tarefa", period_label, "Registos concluídos"]
+        period_user_totals = period_user_totals[
+            [period_label, "User", "Registos concluídos"]
         ]
-        total_period_records = int(user_task_period["Registos concluídos"].sum())
+        total_period_records = int(period_user_totals["Registos concluídos"].sum())
         period_metrics = st.columns(3)
         period_metrics[0].metric(
             "Registos concluídos", f"{total_period_records:,}".replace(",", " ")
         )
-        period_metrics[1].metric("Users", user_task_period["User"].nunique())
-        period_metrics[2].metric("Tarefas", user_task_period["Tarefa"].nunique())
+        period_metrics[1].metric("Users", period_user_totals["User"].nunique())
+        period_metrics[2].metric(
+            "Períodos", period_user_totals[period_label].nunique()
+        )
         st.dataframe(
-            user_task_period,
+            period_user_totals,
             hide_index=True,
             use_container_width=True,
         )
         st.download_button(
-            "Descarregar produção por user, tarefa e período (CSV)",
-            export_csv(user_task_period),
-            file_name="producao_por_user_tarefa_periodo.csv",
+            "Descarregar produção por período e user (CSV)",
+            export_csv(period_user_totals),
+            file_name="producao_por_periodo_e_user.csv",
             mime="text/csv",
             key="download_user_task_period",
         )
