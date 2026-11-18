@@ -218,3 +218,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Operational stock data is provided locally and must not be committed.
+data/stock_08_10.csv
