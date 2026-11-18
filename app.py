@@ -827,8 +827,21 @@ with user_task_period_tab:
             completed_period_data["User"].eq(period_user)
         ]
 
-    period_format = "%d/%m/%Y" if period_granularity == "Dia" else "%m/%Y"
     period_label = "Dia" if period_granularity == "Dia" else "Mês"
+    month_names = [
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
+    ]
     if completed_period_data.empty:
         st.info("Não há registos concluídos com data de tratamento para estes filtros.")
     else:
@@ -843,21 +856,24 @@ with user_task_period_tab:
         period_user_totals = (
             completed_period_data.groupby(["_Período", "User"])
             .size()
-            .rename("Registos concluídos")
+            .rename("Total")
             .reset_index()
             .sort_values(["_Período", "User"], kind="stable")
         )
-        period_user_totals[period_label] = period_user_totals["_Período"].dt.strftime(
-            period_format
-        )
+        if period_granularity == "Dia":
+            period_user_totals[period_label] = period_user_totals[
+                "_Período"
+            ].dt.strftime("%d/%m/%Y")
+        else:
+            period_user_totals[period_label] = period_user_totals["_Período"].apply(
+                lambda period: f"{month_names[period.month - 1]} {period.year}"
+            )
         period_user_totals = period_user_totals[
-            [period_label, "User", "Registos concluídos"]
+            [period_label, "User", "Total"]
         ]
-        total_period_records = int(period_user_totals["Registos concluídos"].sum())
+        total_period_records = int(period_user_totals["Total"].sum())
         period_metrics = st.columns(3)
-        period_metrics[0].metric(
-            "Registos concluídos", f"{total_period_records:,}".replace(",", " ")
-        )
+        period_metrics[0].metric("Total", f"{total_period_records:,}".replace(",", " "))
         period_metrics[1].metric("Users", period_user_totals["User"].nunique())
         period_metrics[2].metric(
             "Períodos", period_user_totals[period_label].nunique()

@@ -12,7 +12,7 @@ Dashboard interativo em Streamlit com separadores principais para apresentação
 - Quadro de pendentes agrupado por tarefa, com antiguidade e exportação CSV.
 - Separador de análise por responsável atribuído, com distribuição por estado, taxa de conclusão e tempo médio; os pendentes sem responsável ficam excluídos.
 - Separador principal “User por tarefa”, ao lado de “Tarefas”, com filtro por user, gráfico comparativo de conclusões, resumo e detalhe por estado e tempo médio; os registos sem user atribuído ficam excluídos.
-- Separador de produção por período e user, com vista diária/mensal, filtros de tarefa e user, total de registos concluídos e exportação CSV.
+- Separador de produção por período e user, com vista diária/mensal, meses identificados em português e total de registos concluídos, filtros de tarefa e user e exportação CSV.
 - No separador “Todos”, resumo agrupado por tarefa e user com contagens por estado e tabela detalhada ordenada pelos mesmos campos.
 - Filtros por tarefa, responsável, período de entrada e descrição.
 - Separadores próprios para pendentes, registos em tratamento e todos os registos.
